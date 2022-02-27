@@ -299,13 +299,15 @@ export interface ViteDevServer {
    */
   _pendingRequests: Map<string, Promise<TransformResult | null>>
 }
-
+// 创建服务
 export async function createServer(
   inlineConfig: InlineConfig = {}
 ): Promise<ViteDevServer> {
+  // 从 CLI + 默认参数中获取 development 或 server 的 config
   const config = await resolveConfig(inlineConfig, 'serve', 'development')
   const root = config.root
   const serverConfig = config.server
+  // https 配置
   const httpsOptions = await resolveHttpsConfig(
     config.server.https,
     config.cacheDir
@@ -314,14 +316,17 @@ export async function createServer(
   if (middlewareMode === true) {
     middlewareMode = 'ssr'
   }
-
+  // 初始化中间接
   const middlewares = connect() as Connect.Server
+  // 使用 node 的 http || https || http2 创建服务
   const httpServer = middlewareMode
     ? null
     : await resolveHttpServer(serverConfig, middlewares, httpsOptions)
+  // 创建websocket服务
   const ws = createWebSocketServer(httpServer, config, httpsOptions)
-
+  // 获取 watch 参数
   const { ignored = [], ...watchOptions } = serverConfig.watch || {}
+  // 通过 chokidar 监控文件变化
   const watcher = chokidar.watch(path.resolve(root), {
     ignored: [
       '**/node_modules/**',
@@ -333,17 +338,18 @@ export async function createServer(
     disableGlobbing: true,
     ...watchOptions
   }) as FSWatcher
-
+  // 初始化模块图谱
   const moduleGraph: ModuleGraph = new ModuleGraph((url, ssr) =>
     container.resolveId(url, undefined, { ssr })
   )
-
+  // 创建插件容器
   const container = await createPluginContainer(config, moduleGraph, watcher)
+  // 初始化服务关闭后的处理函数
   const closeHttpServer = createServerCloseFn(httpServer)
 
   // eslint-disable-next-line prefer-const
   let exitProcess: () => void
-
+  // 用字面量的形式初始化 server 配置
   const server: ViteDevServer = {
     config,
     middlewares,
@@ -430,9 +436,9 @@ export async function createServer(
     _pendingReload: null,
     _pendingRequests: new Map()
   }
-
+  // 插件的 transformIndexHtml 钩子，用于转换 index.html
   server.transformIndexHtml = createDevHtmlTransformFn(server)
-
+  // 退出进程处理函数
   exitProcess = async () => {
     try {
       await server.close()
@@ -455,7 +461,7 @@ export async function createServer(
     }
     return setPackageData(id, pkg)
   }
-
+  // 文件改变时触发事件
   watcher.on('change', async (file) => {
     file = normalizePath(file)
     if (file.endsWith('/package.json')) {
@@ -491,6 +497,7 @@ export async function createServer(
   }
 
   // apply server configuration hooks from plugins
+  // 收集插件中的 configureServer 钩子
   const postHooks: ((() => void) | void)[] = []
   for (const plugin of config.plugins) {
     if (plugin.configureServer) {
@@ -499,7 +506,7 @@ export async function createServer(
   }
 
   // Internal middlewares ------------------------------------------------------
-
+  // 一系列内部的中间件
   // request timer
   if (process.env.DEBUG) {
     middlewares.use(timeMiddleware(root))
@@ -568,7 +575,7 @@ export async function createServer(
 
   // error handler
   middlewares.use(errorMiddleware(server, !!middlewareMode))
-
+  // 跟 optimizeDeps 配置相关的优化
   const runOptimize = async () => {
     server._isRunningOptimizer = true
     try {
@@ -589,8 +596,8 @@ export async function createServer(
     httpServer.listen = (async (port: number, ...args: any[]) => {
       if (!isOptimized) {
         try {
-          await container.buildStart({})
-          await runOptimize()
+          await container.buildStart({}) // 插件容器初始化
+          await runOptimize() // 预编译
           isOptimized = true
         } catch (e) {
           httpServer.emit('error', e)

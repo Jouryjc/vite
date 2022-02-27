@@ -380,6 +380,7 @@ function licensePlugin() {
 }
 
 export default (commandLineArgs) => {
+  debugger
   const isDev = commandLineArgs.watch
   const isProduction = !isDev
 
