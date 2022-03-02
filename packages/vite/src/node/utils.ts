@@ -291,7 +291,7 @@ export function isObject(value: unknown): value is Record<string, any> {
 export function isDefined<T>(value: T | undefined | null): value is T {
   return value != null
 }
-
+// 查找 package.json 文件，尝试往根目录查找机制
 export function lookupFile(
   dir: string,
   formats: string[],
@@ -303,6 +303,7 @@ export function lookupFile(
       return pathOnly ? fullPath : fs.readFileSync(fullPath, 'utf-8')
     }
   }
+  // 没有找到就递归往父级找
   const parentDir = path.dirname(dir)
   if (parentDir !== dir) {
     return lookupFile(parentDir, formats, pathOnly)

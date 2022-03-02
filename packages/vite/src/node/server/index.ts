@@ -299,7 +299,7 @@ export interface ViteDevServer {
    */
   _pendingRequests: Map<string, Promise<TransformResult | null>>
 }
-// 创建服务
+// 接收传入配置创建服务
 export async function createServer(
   inlineConfig: InlineConfig = {}
 ): Promise<ViteDevServer> {
@@ -596,8 +596,10 @@ export async function createServer(
     httpServer.listen = (async (port: number, ...args: any[]) => {
       if (!isOptimized) {
         try {
-          await container.buildStart({}) // 插件容器初始化
-          await runOptimize() // 预编译
+          // 插件容器初始化
+          await container.buildStart({})
+          // 预编译
+          await runOptimize()
           isOptimized = true
         } catch (e) {
           httpServer.emit('error', e)
@@ -645,6 +647,7 @@ async function startServer(
     profileSession.post('Profiler.stop', (err: any, { profile }: any) => {
       // Write profile to disk, upload, etc.
       if (!err) {
+        // 分析 CPU，将结果写入
         const outPath = path.resolve('./vite-profile.cpuprofile')
         fs.writeFileSync(outPath, JSON.stringify(profile))
         info(
@@ -658,6 +661,7 @@ async function startServer(
     })
   }
 
+  // 开启了 open 选项，用浏览器访问 path 路径
   if (options.open && !isRestart) {
     const path = typeof options.open === 'string' ? options.open : base
     openBrowser(
@@ -720,7 +724,9 @@ export function resolveServerOptions(
     preTransformRequests: true,
     ...(raw as ResolvedServerOptions)
   }
+  // 限制哪些文件可以通过 /@fs/ 路径提供服务
   let allowDirs = server.fs?.allow
+  // 用于限制 Vite 开发服务器提供敏感文件的黑名单
   const deny = server.fs?.deny || ['.env', '.env.*', '*.{crt,pem}']
 
   if (!allowDirs) {

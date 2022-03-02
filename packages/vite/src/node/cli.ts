@@ -78,6 +78,7 @@ cli
     // is ok here
     const { createServer } = await import('./server')
     try {
+      // 创建服务
       const server = await createServer({
         root,
         base: options.base,
@@ -92,6 +93,7 @@ cli
         throw new Error('HTTP server not available')
       }
 
+      // 启动服务
       await server.listen()
 
       const info = server.config.logger.info

@@ -42,6 +42,7 @@ let lastType: LogType | undefined
 let lastMsg: string | undefined
 let sameCount = 0
 
+// 清屏函数
 function clearScreen() {
   const repeatCount = process.stdout.rows - 2
   const blank = repeatCount > 0 ? '\n'.repeat(repeatCount) : ''

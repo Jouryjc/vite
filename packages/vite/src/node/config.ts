@@ -310,7 +310,7 @@ export async function resolveConfig(
     }
   }
 
-  // Define logger
+  // 创建 logger 工具
   const logger = createLogger(config.logLevel, {
     allowClearScreen: config.clearScreen,
     customLogger: config.customLogger
@@ -320,7 +320,7 @@ export async function resolveConfig(
   mode = inlineConfig.mode || config.mode || mode
   configEnv.mode = mode
 
-  // resolve plugins
+  // 获取用户定义的插件
   const rawUserPlugins = (config.plugins || []).flat().filter((p) => {
     if (!p) {
       return false
@@ -332,20 +332,23 @@ export async function resolveConfig(
       return p.apply === command
     }
   }) as Plugin[]
+
+  // 根据 enforce 给插件排序
   const [prePlugins, normalPlugins, postPlugins] =
     sortUserPlugins(rawUserPlugins)
 
-  // resolve worker
+  // 获取 worker 配置
   const resolvedWorkerOptions: ResolveWorkerOptions = {
     format: config.worker?.format || 'iife',
     plugins: [],
     rollupOptions: config.worker?.rollupOptions || {}
   }
 
-  // run config hooks
+  // 依次执行插件的 config 钩子
   const userPlugins = [...prePlugins, ...normalPlugins, ...postPlugins]
   for (const p of userPlugins) {
     if (p.config) {
+      // 在 config 有返回值，就合并到 config 中
       const res = await p.config(config, configEnv)
       if (res) {
         config = mergeConfig(config, res)
@@ -353,7 +356,7 @@ export async function resolveConfig(
     }
   }
 
-  // resolve root
+  // 获取 root 配置并标准化
   const resolvedRoot = normalizePath(
     config.root ? path.resolve(config.root) : process.cwd()
   )
@@ -363,7 +366,7 @@ export async function resolveConfig(
     { find: /^[\/]?@vite\/client/, replacement: () => CLIENT_ENTRY }
   ]
 
-  // resolve alias with internal client alias
+  // 合并内部 alias 和用户定义的 alias 配置
   const resolvedAlias = normalizeAlias(
     mergeAlias(
       // @ts-ignore because @rollup/plugin-alias' type doesn't allow function
@@ -372,14 +375,14 @@ export async function resolveConfig(
       config.resolve?.alias || config.alias || []
     )
   )
-
+  // 处理 resolve 其他字段信息
   const resolveOptions: ResolvedConfig['resolve'] = {
     dedupe: config.dedupe,
     ...config.resolve,
     alias: resolvedAlias
   }
 
-  // load .env files
+  // 如果指定了 envDir，从 envDir 获取环境变量
   const envDir = config.envDir
     ? normalizePath(path.resolve(resolvedRoot, config.envDir))
     : resolvedRoot
@@ -406,21 +409,25 @@ export async function resolveConfig(
     [`package.json`],
     true /* pathOnly */
   )
+  // 存储缓存文件的目录
   const cacheDir = config.cacheDir
     ? path.resolve(resolvedRoot, config.cacheDir)
     : pkgPath
     ? path.join(path.dirname(pkgPath), `node_modules/.vite`)
     : path.join(resolvedRoot, `.vite`)
 
+  // 排除的静态资源处理，支持的列表见 packages/vite/src/node/constants.ts
   const assetsFilter = config.assetsInclude
     ? createFilter(config.assetsInclude)
     : () => false
 
   // create an internal resolver to be used in special scenarios, e.g.
   // optimizer & handling css @imports
+  // 创建用于特殊场景的内部解析器，用于 css、sass、less 等场景
   const createResolver: ResolvedConfig['createResolver'] = (options) => {
     let aliasContainer: PluginContainer | undefined
     let resolverContainer: PluginContainer | undefined
+
     return async (id, importer, aliasOnly, ssr) => {
       let container: PluginContainer
       if (aliasOnly) {
@@ -455,6 +462,7 @@ export async function resolveConfig(
     }
   }
 
+  // 静态资源服务的文件夹
   const { publicDir } = config
   const resolvedPublicDir =
     publicDir !== false && publicDir !== ''
@@ -464,6 +472,7 @@ export async function resolveConfig(
         )
       : ''
 
+  // 服务器的配置，resolveServerOptions 函数主要处理了 server.fs 信息
   const server = resolveServerOptions(resolvedRoot, config.server)
 
   const resolved: ResolvedConfig = {
@@ -841,7 +850,7 @@ export function sortUserPlugins(
 
   return [prePlugins, normalPlugins, postPlugins]
 }
-
+// 从文件加载配置
 export async function loadConfigFromFile(
   configEnv: ConfigEnv,
   configFile?: string,
@@ -862,6 +871,7 @@ export async function loadConfigFromFile(
 
   // check package.json for type: "module" and set `isMjs` to true
   try {
+    // 查找 package.json 文件，如果有 type: module 信息就将 isESM 变量变成 true
     const pkg = lookupFile(configRoot, ['package.json'])
     if (pkg && JSON.parse(pkg).type === 'module') {
       isESM = true
@@ -967,7 +977,7 @@ export async function loadConfigFromFile(
     throw e
   }
 }
-
+// 构建配置文件
 async function bundleConfigFile(
   fileName: string,
   isESM = false
@@ -1036,8 +1046,10 @@ async function loadConfigFromBundledFile(
 ): Promise<UserConfig> {
   const extension = path.extname(fileName)
   const defaultLoader = require.extensions[extension]!
+  // 扩展 cjs 的 require 支持的类型
   require.extensions[extension] = (module: NodeModule, filename: string) => {
     if (filename === fileName) {
+      // 调用 module._compile 方法对代码进行编译操作
       ;(module as NodeModuleWithCompile)._compile(bundledCode, filename)
     } else {
       defaultLoader(module, filename)
