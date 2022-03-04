@@ -84,6 +84,12 @@ importers:
       vite: 2.8.6
       vite-plugin-inspect: 0.4.3_vite@2.8.6
 
+  examples/vite-learning:
+    specifiers:
+      vite: ^2.8.4
+    devDependencies:
+      vite: link:../../packages/vite
+
   packages/create-vite:
     specifiers:
       kolorist: ^1.5.1

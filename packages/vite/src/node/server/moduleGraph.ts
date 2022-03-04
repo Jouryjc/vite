@@ -55,9 +55,12 @@ export type ResolvedUrl = [
 ]
 
 export class ModuleGraph {
+  // url 和模块的映射
   urlToModuleMap = new Map<string, ModuleNode>()
+  // id 和模块的映射
   idToModuleMap = new Map<string, ModuleNode>()
   // a single file may corresponds to multiple modules with different queries
+  // 文件和模块的映射，这里为什么是个 Set 呢 -> 一个文件对应多个模块
   fileToModulesMap = new Map<string, Set<ModuleNode>>()
   safeModulesPath = new Set<string>()
 
@@ -68,6 +71,7 @@ export class ModuleGraph {
     ) => Promise<PartialResolvedId | null>
   ) {}
 
+  // 通过url获取模块
   async getModuleByUrl(
     rawUrl: string,
     ssr?: boolean
@@ -84,6 +88,7 @@ export class ModuleGraph {
     return this.fileToModulesMap.get(file)
   }
 
+  // 文件修改的事件
   onFileChange(file: string): void {
     const mods = this.getModulesByFile(file)
     if (mods) {

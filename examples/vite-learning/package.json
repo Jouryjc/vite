@@ -3,12 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite dev --host 0.0.0.0 --port 3333 --config vite.config.ts",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^2.8.0",
     "vite-plugin-inspect": "^0.4.3"
+  },
+  "dependencies": {
+    "vite": "^2.8.4"
   }
 }

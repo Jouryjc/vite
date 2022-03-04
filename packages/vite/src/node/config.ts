@@ -290,6 +290,7 @@ export async function resolveConfig(
     process.env.NODE_ENV = 'production'
   }
 
+  // 这是我们能在 config 钩子中拿到的参数
   const configEnv = {
     mode,
     command
