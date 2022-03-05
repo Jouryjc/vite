@@ -126,6 +126,13 @@ type PluginContext = Omit<
 
 export let parser = acorn.Parser
 
+/**
+ * 创建插件容器
+ * @param config 解析后的配置
+ * @param moduleGraph 模块依赖对象
+ * @param watcher 文件监听实例
+ * @returns 容器对象
+ */
 export async function createPluginContainer(
   { plugins, logger, root, build: { rollupOptions } }: ResolvedConfig,
   moduleGraph?: ModuleGraph,
@@ -143,11 +150,12 @@ export async function createPluginContainer(
   })
 
   // ---------------------------------------------------------------------------
-
+  // 监听文件数组
   const watchFiles = new Set<string>()
 
-  // get rollup version
+  // 获取 rollup 的版本
   const rollupPkgPath = resolve(require.resolve('rollup'), '../../package.json')
+
   const minimalContext: MinimalPluginContext = {
     meta: {
       rollupVersion: JSON.parse(fs.readFileSync(rollupPkgPath, 'utf-8'))
@@ -156,6 +164,7 @@ export async function createPluginContainer(
     }
   }
 
+  // 使用了不兼容 vite 的插件告警函数
   function warnIncompatibleMethod(method: string, plugin: string) {
     logger.warn(
       colors.cyan(`[plugin:${plugin}] `) +
@@ -184,11 +193,13 @@ export async function createPluginContainer(
   const EMPTY_OBJECT = Object.freeze({})
 
   function getModuleInfo(id: string) {
+    // 通过 id 去获取模块
     const module = moduleGraph?.getModuleById(id)
     if (!module) {
       return null
     }
     if (!module.info) {
+      // module.info 为什么是个 Proxy？
       module.info = new Proxy(
         { id, meta: module.meta || EMPTY_OBJECT } as ModuleInfo,
         ModuleInfoProxy
@@ -222,6 +233,9 @@ export async function createPluginContainer(
       this._activePlugin = initialPlugin || null
     }
 
+    /**
+     * 编译代码
+     */
     parse(code: string, opts: any = {}) {
       return parser.parse(code, {
         sourceType: 'module',
@@ -256,12 +270,18 @@ export async function createPluginContainer(
         : Array.prototype[Symbol.iterator]()
     }
 
+    /**
+     * 添加热更监听文件
+     */
     addWatchFile(id: string) {
       watchFiles.add(id)
       ;(this._addedImports || (this._addedImports = new Set())).add(id)
       if (watcher) ensureWatchedFile(watcher, id, root)
     }
 
+    /**
+     * 获取全部热更文件
+     */
     getWatchFiles() {
       return [...watchFiles]
     }
@@ -452,6 +472,7 @@ export async function createPluginContainer(
 
   let closed = false
 
+  // 定义插件容器 -> rollup 构建钩子
   const container: PluginContainer = {
     options: await (async () => {
       let options = rollupOptions
