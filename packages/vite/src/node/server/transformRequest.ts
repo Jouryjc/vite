@@ -44,8 +44,11 @@ export function transformRequest(
   options: TransformOptions = {}
 ): Promise<TransformResult | null> {
   const cacheKey = (options.ssr ? 'ssr:' : options.html ? 'html:' : '') + url
+  // 判断请求队列中是否存在当前的请求
   let request = server._pendingRequests.get(cacheKey)
+  // 如果不存在
   if (!request) {
+    // 做转换
     request = doTransform(url, server, options)
     server._pendingRequests.set(cacheKey, request)
     const done = () => server._pendingRequests.delete(cacheKey)
@@ -54,20 +57,29 @@ export function transformRequest(
   return request
 }
 
+/**
+ * 解析转换
+ * @param {string} url 请求进来的路径
+ * @param {ViteDevServer} server http服务
+ * @param {TransformOptions} options 转换配置，{ html: false }
+ *
+ */
 async function doTransform(
   url: string,
   server: ViteDevServer,
   options: TransformOptions
 ) {
+  // 移除时间戳的查询参数
   url = removeTimestampQuery(url)
   const { config, pluginContainer, moduleGraph, watcher } = server
   const { root, logger } = config
   const prettyUrl = isDebug ? prettifyUrl(url, root) : ''
   const ssr = !!options.ssr
 
+  // 根据 url 获取模块
   const module = await server.moduleGraph.getModuleByUrl(url, ssr)
 
-  // check if we have a fresh cache
+  // dev 下缓存解析转换后的结果
   const cached =
     module && (ssr ? module.ssrTransformResult : module.transformResult)
   if (cached) {
@@ -81,9 +93,11 @@ async function doTransform(
     return cached
   }
 
-  // resolve
+  // 拿到模块对应的绝对路径 /Users/yjcjour/Documents/code/vite/examples/vite-learning/main.js
   const id =
     (await pluginContainer.resolveId(url, undefined, { ssr }))?.id || url
+
+  // 净化id，去除hash和query参数
   const file = cleanUrl(id)
 
   let code: string | null = null
@@ -91,6 +105,7 @@ async function doTransform(
 
   // load
   const loadStart = isDebug ? performance.now() : 0
+  // 执行插件的 load 钩子
   const loadResult = await pluginContainer.load(id, { ssr })
   if (loadResult == null) {
     // if this is an html request and there is no load result, skip ahead to
@@ -148,11 +163,15 @@ async function doTransform(
   }
 
   // ensure module in graph after successful load
+  // 确保模块在模块图中正常加载
   const mod = await moduleGraph.ensureEntryFromUrl(url, ssr)
+  // 确保模块文件被文件监听器监听
   ensureWatchedFile(watcher, mod.file, root)
 
   // transform
   const transformStart = isDebug ? performance.now() : 0
+
+  // 核心核心核心！调用转换钩子
   const transformResult = await pluginContainer.transform(code, id, {
     inMap: map,
     ssr

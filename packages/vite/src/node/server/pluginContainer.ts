@@ -506,6 +506,12 @@ export async function createPluginContainer(
       )
     },
 
+    /**
+     * 解析模块 id
+     * @param {string} rawId
+     * @param {string} importer
+     * @param {PluginContainer.resolveId.}
+     */
     async resolveId(rawId, importer = join(root, 'index.html'), options) {
       const skip = options?.skip
       const ssr = options?.ssr
@@ -516,6 +522,7 @@ export async function createPluginContainer(
 
       let id: string | null = null
       const partial: Partial<PartialResolvedId> = {}
+      // 循环调用插件的 resolveId 钩子
       for (const plugin of plugins) {
         if (!plugin.resolveId) continue
         if (skip?.has(plugin)) continue

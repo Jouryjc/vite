@@ -39,6 +39,11 @@ const isDebug = !!process.env.DEBUG
 
 const knownIgnoreList = new Set(['/', '/favicon.ico'])
 
+/**
+ * 文件转换中间件
+ * @param {ViteDevServer} server http服务
+ * @returns {Connect.NextHandleFunction} 中间件
+ */
 export function transformMiddleware(
   server: ViteDevServer
 ): Connect.NextHandleFunction {
@@ -47,7 +52,7 @@ export function transformMiddleware(
     moduleGraph
   } = server
 
-  // determine the url prefix of files inside cache directory
+  // 确定缓存目录中文件的 url前缀
   const cacheDirRelative = normalizePath(path.relative(root, cacheDir))
   const cacheDirPrefix = cacheDirRelative.startsWith('../')
     ? // if the cache directory is outside root, the url prefix would be something
@@ -59,6 +64,7 @@ export function transformMiddleware(
 
   // Keep the named function. The name is visible in debug logs via `DEBUG=connect:dispatcher ...`
   return async function viteTransformMiddleware(req, res, next) {
+    // 如果请求不是GET、url在忽略列表中，直接到下一个中间件
     if (req.method !== 'GET' || knownIgnoreList.has(req.url!)) {
       return next()
     }
@@ -76,6 +82,7 @@ export function transformMiddleware(
           // If the refresh has not happened after timeout, Vite considers
           // something unexpected has happened. In this case, Vite
           // returns an empty response that will error.
+          // 如果超时后没有刷新，Vite 认为发生了意外情况。在这种情况下，Vite 返回一个会出错的空响应。
           new Promise((_, reject) =>
             setTimeout(reject, NEW_DEPENDENCY_BUILD_TIMEOUT)
           )
@@ -103,9 +110,11 @@ export function transformMiddleware(
       return next(e)
     }
 
+    // 清楚url中的hash值和query参数
     const withoutQuery = cleanUrl(url)
 
     try {
+      // sourcemap 的处理
       const isSourceMap = withoutQuery.endsWith('.map')
       // since we generate source map references, handle those requests here
       if (isSourceMap) {
@@ -139,6 +148,7 @@ export function transformMiddleware(
         }
       }
 
+      // 如果是js、import查询、css、html-proxy
       if (
         isJSRequest(url) ||
         isImportRequest(url) ||
@@ -173,7 +183,7 @@ export function transformMiddleware(
           return res.end()
         }
 
-        // resolve, load and transform using the plugin container
+        // 使用插件容器解析、接在和转换
         const result = await transformRequest(url, server, {
           html: req.headers.accept?.includes('text/html')
         })
@@ -182,6 +192,7 @@ export function transformMiddleware(
           const isDep =
             DEP_VERSION_RE.test(url) ||
             (cacheDirPrefix && url.startsWith(cacheDirPrefix))
+
           return send(req, res, result.code, type, {
             etag: result.etag,
             // allow browser to cache npm deps!
