@@ -45,13 +45,17 @@ export async function handleHMRUpdate(
   const { ws, config, moduleGraph } = server
   const shortFile = getShortName(file, config.root)
 
+  // 配置文件修改，比如 vite.config.ts
   const isConfig = file === config.configFile
+  // 配置文件的依赖
   const isConfigDependency = config.configFileDependencies.some(
     (name) => file === path.resolve(name)
   )
   const isEnv =
     config.inlineConfig.envFile !== false &&
     (file === '.env' || file.startsWith('.env.'))
+
+  // 如果是配置文件修改了，直接重启服务
   if (isConfig || isConfigDependency || isEnv) {
     // auto restart server
     debugHmr(`[config change] ${colors.dim(shortFile)}`)
@@ -72,6 +76,7 @@ export async function handleHMRUpdate(
   debugHmr(`[file change] ${colors.dim(shortFile)}`)
 
   // (dev only) the client itself cannot be hot updated.
+  // vite 的 client 修改了，全量刷新 -> 刷新页面
   if (file.startsWith(normalizedClientDir)) {
     ws.send({
       type: 'full-reload',
@@ -80,29 +85,41 @@ export async function handleHMRUpdate(
     return
   }
 
+  // 获取文件关联的模块
   const mods = moduleGraph.getModulesByFile(file)
 
   // check if any plugin wants to perform custom HMR handling
   const timestamp = Date.now()
+  // 热更上下文
   const hmrContext: HmrContext = {
+    // 文件
     file,
+    // 时间戳
     timestamp,
+    // 受更改文件影响的模块数组
     modules: mods ? [...mods] : [],
+    // 这是一个异步读函数，它返回文件的内容。之所以这样做，是因为在某些系统上，文件更改的回调函数可能会在编辑器完成文件更新之前过快地触发
+    // 并 fs.readFile 直接会返回空内容。传入的 read 函数规范了这种行为。
     read: () => readModifiedFile(file),
+    // 整个服务对象
     server
   }
 
+  // 遍历插件，调用 handleHotUpdate 钩子，为什么这个钩子不放在 pluginContainer？
   for (const plugin of config.plugins) {
     if (plugin.handleHotUpdate) {
       const filteredModules = await plugin.handleHotUpdate(hmrContext)
+
+      // 受更改文件影响的模块数组
       if (filteredModules) {
         hmrContext.modules = filteredModules
       }
     }
   }
 
+  // 文件修改没有影响其他模块
   if (!hmrContext.modules.length) {
-    // html file cannot be hot updated
+    // 是 html 的话，直接刷新页面
     if (file.endsWith('.html')) {
       config.logger.info(colors.green(`page reload `) + colors.dim(shortFile), {
         clear: true,
@@ -121,21 +138,34 @@ export async function handleHMRUpdate(
     return
   }
 
+  // 核心，执行模块更新
   updateModules(shortFile, hmrContext.modules, timestamp, server)
 }
 
+/**
+ * 更新模块
+ * @param {string} file 文件路径
+ * @param {ModuleNode[]} modules 影响的模块
+ * @param {number} timestamp 当前时间的时间戳
+ * @poram {ViteDevServer} server 服务对象
+ */
 function updateModules(
   file: string,
   modules: ModuleNode[],
   timestamp: number,
   { config, ws }: ViteDevServer
 ) {
+  // 更新的列表
   const updates: Update[] = []
+
+  // 失效模块
   const invalidatedModules = new Set<ModuleNode>()
+  // 页面刷新符号
   let needFullReload = false
 
   for (const mod of modules) {
     invalidate(mod, timestamp, invalidatedModules)
+    // 如果需要重新刷新，不再去计算边界
     if (needFullReload) {
       continue
     }
@@ -144,12 +174,15 @@ function updateModules(
       boundary: ModuleNode
       acceptedVia: ModuleNode
     }>()
+    // 死路标志
     const hasDeadEnd = propagateUpdate(mod, boundaries)
+    // 死路的话直接刷新页面
     if (hasDeadEnd) {
       needFullReload = true
       continue
     }
 
+    // 否则的话，遍历全部边界，触发模块更新
     updates.push(
       ...[...boundaries].map(({ boundary, acceptedVia }) => ({
         type: `${boundary.type}-update` as Update['type'],
@@ -175,6 +208,7 @@ function updateModules(
         .join('\n'),
       { clear: true, timestamp: true }
     )
+    // 触发全部模块的更新
     ws.send({
       type: 'update',
       updates
@@ -217,6 +251,13 @@ export async function handleFileAddUnlink(
   }
 }
 
+/**
+ * 更新冒泡
+ * @param {ModuleNode} node 当前更新的模块
+ * @param {Set<{ boundary: ModuleNode acceptedVia: ModuleNode }>} boundaries 边界
+ * @param {ModuleNode[]} currentChain
+ * @returns {boolean} 是否死路
+ */
 function propagateUpdate(
   node: ModuleNode,
   boundaries: Set<{
@@ -225,6 +266,7 @@ function propagateUpdate(
   }>,
   currentChain: ModuleNode[] = [node]
 ): boolean /* hasDeadEnd */ {
+  // 如果模块自我“接受”，加入到边界数组中
   if (node.isSelfAccepting) {
     boundaries.add({
       boundary: node,
@@ -233,6 +275,7 @@ function propagateUpdate(
 
     // additionally check for CSS importers, since a PostCSS plugin like
     // Tailwind JIT may register any file as a dependency to a CSS file.
+    // 将 css 相关的资源引入全部加到 boundaries
     for (const importer of node.importers) {
       if (isCSSRequest(importer.url) && !currentChain.includes(importer)) {
         propagateUpdate(importer, boundaries, currentChain.concat(importer))
@@ -242,6 +285,7 @@ function propagateUpdate(
     return false
   }
 
+  // 没有依赖
   if (!node.importers.size) {
     return true
   }
@@ -256,6 +300,7 @@ function propagateUpdate(
     return true
   }
 
+  // 遍历当前模块的依赖
   for (const importer of node.importers) {
     const subChain = currentChain.concat(importer)
     if (importer.acceptedHmrDeps.has(node)) {
@@ -266,6 +311,7 @@ function propagateUpdate(
       continue
     }
 
+    // 循环引用直接刷新
     if (currentChain.includes(importer)) {
       // circular deps is considered dead end
       return true
@@ -278,16 +324,25 @@ function propagateUpdate(
   return false
 }
 
+/**
+ * 处理失效模块
+ * @param {ModuleNode} mod 模块节点
+ * @param {number} timestamp 当前时间
+ * @param {Set<ModuleNode>} seen
+ */
 function invalidate(mod: ModuleNode, timestamp: number, seen: Set<ModuleNode>) {
   if (seen.has(mod)) {
     return
   }
   seen.add(mod)
   mod.lastHMRTimestamp = timestamp
+  // 置空一系列信息
   mod.transformResult = null
   mod.ssrModule = null
   mod.ssrTransformResult = null
+  // 遍历依赖者，如果热更新的模块中不存在该模块
   mod.importers.forEach((importer) => {
+    // 当前模块热更的依赖不包含当前模块，递归全部失效
     if (!importer.acceptedHmrDeps.has(mod)) {
       invalidate(importer, timestamp, seen)
     }

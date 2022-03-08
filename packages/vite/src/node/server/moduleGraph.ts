@@ -29,6 +29,7 @@ export class ModuleNode {
   meta?: Record<string, any>
   importers = new Set<ModuleNode>()
   importedModules = new Set<ModuleNode>()
+  // 当前模块热更的依赖
   acceptedHmrDeps = new Set<ModuleNode>()
   isSelfAccepting = false
   transformResult: TransformResult | null = null

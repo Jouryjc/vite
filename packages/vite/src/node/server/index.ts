@@ -463,7 +463,9 @@ export async function createServer(
   }
   // 文件改变时触发事件
   watcher.on('change', async (file) => {
+    // 规范化文件路径，将\\替换成/
     file = normalizePath(file)
+    // 是 package.json 文件改变的话，直接全部包数据失效
     if (file.endsWith('/package.json')) {
       return invalidatePackageData(packageCache, file)
     }
