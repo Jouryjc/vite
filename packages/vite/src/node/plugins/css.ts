@@ -165,11 +165,18 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
     },
 
     async transform(raw, id, options) {
+      // 过滤css请求
       if (!isCSSRequest(id) || commonjsProxyRE.test(id)) {
         return
       }
       const ssr = options?.ssr === true
 
+      /**
+       * 替换资源url
+       * @param {string} url 导入连接
+       * @param {string} importer 导入文件
+       * @returns {string} url 返回结果
+       */
       const urlReplacer: CssUrlReplacer = async (url, importer) => {
         if (checkPublicFile(url, config)) {
           return config.base + url.slice(1)
@@ -181,6 +188,7 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
         return url
       }
 
+      // 编译css
       const {
         code: css,
         modules,
@@ -193,11 +201,13 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
         atImportResolvers,
         server
       )
+      // 将模块化css的结果存入moduleCache
       if (modules) {
         moduleCache.set(id, modules)
       }
 
       // track deps for build watch mode
+      // 监听这部分依赖
       if (config.command === 'build' && config.build.watch && deps) {
         for (const file of deps) {
           this.addWatchFile(file)
@@ -217,6 +227,7 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
             // main import to hot update
             const depModules = new Set<string | ModuleNode>()
             for (const file of deps) {
+              // 对于@import的资源加到模块图谱中
               depModules.add(
                 isCSSRequest(file)
                   ? moduleGraph.createFileOnlyEntry(file)
@@ -244,6 +255,7 @@ export function cssPlugin(config: ResolvedConfig): Plugin {
               this.addWatchFile(file)
             }
           } else {
+            // 打开模块监听
             thisModule.isSelfAccepting = isSelfAccepting
           }
         }
@@ -609,16 +621,23 @@ async function compileCSS(
   modules?: Record<string, string>
   deps?: Set<string>
 }> {
+  // 获取外部配置的 preprocessorOptions 和 modules
   const { modules: modulesOptions, preprocessorOptions } = config.css || {}
+  // 判断模块是不是module，满足两个条件：一是配置了 modules，二是模块文件满足 xx.module.yyy
   const isModule = modulesOptions !== false && cssModuleRE.test(id)
   // although at serve time it can work without processing, we do need to
   // crawl them in order to register watch dependencies.
+  // 是否需要内联import
   const needInlineImport = code.includes('@import')
+  // 是否有资源引入，url
   const hasUrl = cssUrlRE.test(code) || cssImageSetRE.test(code)
+  // 解析 postcss 配置
   const postcssConfig = await resolvePostcssConfig(config)
+  // css 语言类型，是css、scss、还是 less 等等
   const lang = id.match(cssLangRE)?.[1] as CssLang | undefined
 
   // 1. plain css that needs no processing
+  // 纯 css 啥都不需要做，直接返回
   if (
     lang === 'css' &&
     !postcssConfig &&
@@ -634,8 +653,11 @@ async function compileCSS(
   const deps = new Set<string>()
 
   // 2. pre-processors: sass etc.
+  // 有预处理器的情况
   if (isPreProcessor(lang)) {
+    // 获取预处理器，比如less
     const preProcessor = preProcessors[lang]
+    // 获取预处理器的配置
     let opts = (preprocessorOptions && preprocessorOptions[lang]) || {}
     // support @import from node dependencies by default
     switch (lang) {
@@ -652,24 +674,29 @@ async function compileCSS(
       case PreprocessLang.stylus:
         opts = {
           paths: ['node_modules'],
-          alias: config.resolve.alias,
+          alias: config.resolve.alias, // 获取路径简写
           ...opts
         }
     }
     // important: set this for relative import resolving
+    // url去掉hash和query
     opts.filename = cleanUrl(id)
+    // 执行预处理，并获取结果
     const preprocessResult = await preProcessor(
       code,
       config.root,
       opts,
       atImportResolvers
     )
+    // 报错处理
     if (preprocessResult.errors.length) {
       throw preprocessResult.errors[0]
     }
 
     code = preprocessResult.code
     map = preprocessResult.map as SourceMap
+
+    // 预处理依赖处理
     if (preprocessResult.deps) {
       preprocessResult.deps.forEach((dep) => {
         // sometimes sass registers the file itself as a dep
@@ -681,11 +708,14 @@ async function compileCSS(
   }
 
   // 3. postcss
+  // 后处理器postcss配置
   const postcssOptions = (postcssConfig && postcssConfig.options) || {}
   const postcssPlugins =
     postcssConfig && postcssConfig.plugins ? postcssConfig.plugins.slice() : []
 
+  // 内联 @import
   if (needInlineImport) {
+    // html 代理
     const isHTMLProxy = htmlProxyRE.test(id)
     postcssPlugins.unshift(
       (await import('postcss-import')).default({
@@ -712,6 +742,7 @@ async function compileCSS(
     }) as Postcss.Plugin
   )
 
+  // 是模块化css，用 postcss-modules 处理
   if (isModule) {
     postcssPlugins.unshift(
       (await import('postcss-modules')).default({
@@ -748,6 +779,7 @@ async function compileCSS(
   }
 
   // postcss is an unbundled dep and should be lazy imported
+  // 执行postcss编译
   const postcssResult = await (await import('postcss'))
     .default(postcssPlugins)
     .process(code, {
@@ -801,6 +833,7 @@ async function compileCSS(
     }
   }
 
+  // 返回最终编译后的代码
   return {
     ast: postcssResult,
     code: postcssResult.css,
