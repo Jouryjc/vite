@@ -7,5 +7,5 @@ document.querySelector('#app').innerHTML = `
 `
 
 if (import.meta.hot) {
-  import.meta.hot.accept('./src/foo')
+  // import.meta.hot.accept()
 }

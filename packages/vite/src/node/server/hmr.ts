@@ -51,6 +51,7 @@ export async function handleHMRUpdate(
   const isConfigDependency = config.configFileDependencies.some(
     (name) => file === path.resolve(name)
   )
+  // 环境变量文件
   const isEnv =
     config.inlineConfig.envFile !== false &&
     (file === '.env' || file.startsWith('.env.'))
@@ -75,7 +76,6 @@ export async function handleHMRUpdate(
 
   debugHmr(`[file change] ${colors.dim(shortFile)}`)
 
-  // (dev only) the client itself cannot be hot updated.
   // vite 的 client 修改了，全量刷新 -> 刷新页面
   if (file.startsWith(normalizedClientDir)) {
     ws.send({
@@ -105,7 +105,7 @@ export async function handleHMRUpdate(
     server
   }
 
-  // 遍历插件，调用 handleHotUpdate 钩子，为什么这个钩子不放在 pluginContainer？
+  // 遍历插件，调用 handleHotUpdate 钩子
   for (const plugin of config.plugins) {
     if (plugin.handleHotUpdate) {
       const filteredModules = await plugin.handleHotUpdate(hmrContext)
@@ -285,7 +285,7 @@ function propagateUpdate(
     return false
   }
 
-  // 没有依赖
+  // 这个条件什么时候成立？因为如果没有引用者，moduleGraph 应该不会有文件对应的信息
   if (!node.importers.size) {
     return true
   }
@@ -342,7 +342,8 @@ function invalidate(mod: ModuleNode, timestamp: number, seen: Set<ModuleNode>) {
   mod.ssrTransformResult = null
   // 遍历依赖者，如果热更新的模块中不存在该模块
   mod.importers.forEach((importer) => {
-    // 当前模块热更的依赖不包含当前模块，递归全部失效
+    // 当前模块热更的依赖不包含当前模块，accept 的参数，例子中 foo 是 bar 的引用者，这里的判断是 true；
+    // 如果不存在也就是 accept 的参数是空时就清空引用者的信息
     if (!importer.acceptedHmrDeps.has(mod)) {
       invalidate(importer, timestamp, seen)
     }

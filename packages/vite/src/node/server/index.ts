@@ -465,7 +465,7 @@ export async function createServer(
   watcher.on('change', async (file) => {
     // 规范化文件路径，将\\替换成/
     file = normalizePath(file)
-    // 是 package.json 文件改变的话，直接全部包数据失效
+    // 是 package.json 文件改变，
     if (file.endsWith('/package.json')) {
       return invalidatePackageData(packageCache, file)
     }
@@ -483,10 +483,12 @@ export async function createServer(
     }
   })
 
+  // 添加文件事件
   watcher.on('add', (file) => {
     handleFileAddUnlink(normalizePath(file), server)
   })
 
+  // 删除文件
   watcher.on('unlink', (file) => {
     handleFileAddUnlink(normalizePath(file), server, true)
   })
