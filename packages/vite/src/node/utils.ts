@@ -209,6 +209,11 @@ export function removeImportQuery(url: string): string {
   return url.replace(importQueryRE, '$1').replace(trailingSeparatorRE, '')
 }
 
+/**
+ * 注入查询参数
+ * @param {string} url
+ * @param {string} queryToInject
+ */
 export function injectQuery(url: string, queryToInject: string): string {
   // encode percents for consistent behavior with pathToFileURL
   // see #2614 for details

@@ -109,6 +109,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
 
     async transform(source, importer, options) {
       const ssr = options?.ssr === true
+      // 美化url，输出日志
       const prettyImporter = prettifyUrl(importer, root)
 
       if (canSkip(importer)) {
@@ -124,6 +125,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
         source = source.slice(1)
       }
       try {
+        // 解析全部 import
         imports = parseImports(source)[0]
       } catch (e: any) {
         const isVue = importer.endsWith('.vue')
@@ -183,6 +185,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
         }
 
         let importerFile = importer
+        // 预编译处理
         if (
           moduleListContains(config.optimizeDeps?.exclude, url) &&
           server._optimizeDepsMetadata
@@ -212,10 +215,13 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
           )
         }
 
+        // 相对路径
         const isRelative = url.startsWith('.')
+        // 自己引用自己
         const isSelfImport = !isRelative && cleanUrl(url) === cleanUrl(importer)
 
         // normalize all imports into resolved URLs
+        // 将全部依赖改成路径的形式
         // e.g. `import 'foo'` -> `import '/@fs/.../node_modules/foo/index.js`
         if (resolved.id.startsWith(root + '/')) {
           // in root: infer short absolute path from root
@@ -227,6 +233,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
           url = resolved.id
         }
 
+        // url 引用
         if (isExternalUrl(url)) {
           return [url, url]
         }
@@ -234,6 +241,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
         // if the resolved id is not a valid browser import specifier,
         // prefix it to make it valid. We will strip this before feeding it
         // back into the transform pipeline
+        // 不是合法的浏览器import语法，加前缀
         if (!url.startsWith('.') && !url.startsWith('/')) {
           url =
             VALID_ID_PREFIX + resolved.id.replace('\0', NULL_BYTE_PLACEHOLDER)
@@ -242,6 +250,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
         // make the URL browser-valid if not SSR
         if (!ssr) {
           // mark non-js/css imports with `?import`
+          // 非css、js的引用加 ?import 参数
           url = markExplicitImport(url)
 
           // for relative js/css imports, or self-module virtual imports
@@ -259,6 +268,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
           // its last updated timestamp to force the browser to fetch the most
           // up-to-date version of this module.
           try {
+            // 热更处理
             const depModule = await moduleGraph.ensureEntryFromUrl(url, ssr)
             if (depModule.lastHMRTimestamp > 0) {
               url = injectQuery(url, `t=${depModule.lastHMRTimestamp}`)
@@ -278,6 +288,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
       }
 
       for (let index = 0; index < imports.length; index++) {
+        // 获取模块的导入、导出信息
         const {
           s: start,
           e: end,
@@ -290,6 +301,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
           n: specifier
         } = imports[index]
 
+        // 截取 url 部分
         const rawUrl = source.slice(start, end)
 
         // check import.meta usage
@@ -372,7 +384,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
               continue
             }
           }
-          // skip client
+          // skip client @vite/client
           if (specifier === clientPublicPath) {
             continue
           }
@@ -409,6 +421,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
             // imports to const assignments.
             if (resolvedId.endsWith(`&es-interop`)) {
               url = url.slice(0, -11)
+              // 重写动态引入
               if (isDynamicImport) {
                 // rewrite `import('package')` to expose the default directly
                 str().overwrite(

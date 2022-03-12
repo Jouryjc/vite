@@ -1,8 +1,9 @@
 import './style.css'
 
-const fooModule = await import('./foo')
-console.log(fooModule)
+await import('./foo')
 
 if (import.meta.hot) {
-  import.meta.hot.accept()
+  import.meta.hot.accept(() => {
+    console.log(1)
+  })
 }
