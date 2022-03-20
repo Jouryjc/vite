@@ -583,6 +583,7 @@ export async function createServer(
   const runOptimize = async () => {
     server._isRunningOptimizer = true
     try {
+      // 依赖预编译
       server._optimizeDepsMetadata = await optimizeDeps(
         config,
         config.server.force || server._forceOptimizeOnRestart

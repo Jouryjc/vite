@@ -103,6 +103,14 @@ export interface DepOptimizationMetadata {
   >
 }
 
+/**
+ * 依赖预编译
+ * @param {ResolvedConfig} config 
+ * @param {boolean} force 强制刷新缓存变量
+ * @param {boolean} asCommand
+ * @param {Record<string, string>} newDeps 新的依赖
+ * @param {boolean} ssr
+ */
 export async function optimizeDeps(
   config: ResolvedConfig,
   force = config.server.force,
@@ -118,17 +126,22 @@ export async function optimizeDeps(
   const { root, logger, cacheDir } = config
   const log = asCommand ? logger.info : debug
 
+  // 缓存文件信息
   const dataPath = path.join(cacheDir, '_metadata.json')
+  // 获取依赖的hash，这里的依赖是 lock 文件、以及 config 的部分信息
   const mainHash = getDepHash(root, config)
+  // 定义预编译优化的元数据
   const data: DepOptimizationMetadata = {
     hash: mainHash,
     browserHash: mainHash,
     optimized: {}
   }
 
+  // 不强制刷新
   if (!force) {
     let prevData: DepOptimizationMetadata | undefined
     try {
+      // 读取 metadata 信息
       prevData = JSON.parse(fs.readFileSync(dataPath, 'utf-8'))
     } catch (e) {}
     // hash is consistent, no need to re-bundle
@@ -138,19 +151,23 @@ export async function optimizeDeps(
     }
   }
 
+  // 存在缓存目录，清空目录
   if (fs.existsSync(cacheDir)) {
     emptyDir(cacheDir)
   } else {
+    // 创建多层级缓存目录
     fs.mkdirSync(cacheDir, { recursive: true })
   }
   // a hint for Node.js
   // all files in the cache directory should be recognized as ES modules
+  // 缓存目录的模块要被识别成 ESM
   writeFile(
     path.resolve(cacheDir, 'package.json'),
     JSON.stringify({ type: 'module' })
   )
 
   let deps: Record<string, string>, missing: Record<string, string>
+  // 没有新的依赖的情况，扫描并预构建全部的 import
   if (!newDeps) {
     ;({ deps, missing } = await scanImports(config))
   } else {
@@ -164,6 +181,7 @@ export async function optimizeDeps(
     .digest('hex')
     .substring(0, 8)
 
+  // 遗漏的包
   const missingIds = Object.keys(missing)
   if (missingIds.length) {
     throw new Error(
@@ -178,6 +196,7 @@ export async function optimizeDeps(
     )
   }
 
+  // 获取 optimizeDeps?.include 配置
   const include = config.optimizeDeps?.include
   if (include) {
     const resolve = config.createResolver({ asSrc: false })
@@ -200,6 +219,7 @@ export async function optimizeDeps(
 
   const qualifiedIds = Object.keys(deps)
 
+  // 没有依赖的情况
   if (!qualifiedIds.length) {
     writeFile(dataPath, JSON.stringify(data, null, 2))
     log(`No dependencies to bundle. Skipping.\n\n\n`)
@@ -207,9 +227,13 @@ export async function optimizeDeps(
   }
 
   const total = qualifiedIds.length
+  // pre-bundling 的列表最多展示 5 项
   const maxListed = 5
+  // 列表数量
   const listed = Math.min(total, maxListed)
+  // 剩余的数量
   const extra = Math.max(0, total - maxListed)
+  // 预编译依赖的信息
   const depsString = colors.yellow(
     qualifiedIds.slice(0, listed).join(`\n  `) +
       (extra > 0 ? `\n  (...and ${extra} more)` : ``)
@@ -233,8 +257,11 @@ export async function optimizeDeps(
   // 1. flatten all ids to eliminate slash
   // 2. in the plugin, read the entry ourselves as virtual files to retain the
   //    path.
+  // 拍平的依赖IDs
   const flatIdDeps: Record<string, string> = {}
+  // id <--> export
   const idToExports: Record<string, ExportsData> = {}
+  // 拍平的id <--> export
   const flatIdToExports: Record<string, ExportsData> = {}
 
   const { plugins = [], ...esbuildOptions } =
@@ -244,7 +271,7 @@ export async function optimizeDeps(
   for (const id in deps) {
     const flatId = flattenId(id)
     const filePath = (flatIdDeps[flatId] = deps[id])
-    const entryContent = fs.readFileSync(filePath, 'utf-8')
+    const entryContent = fs.readFileSync(filePath, 'utf-8') // 读取依赖内容
     let exportsData: ExportsData
     try {
       exportsData = parse(entryContent) as ExportsData
@@ -263,8 +290,10 @@ export async function optimizeDeps(
       }
       exportsData = parse(transformed.code) as ExportsData
     }
+    // ss -> export start  se -> export end
     for (const { ss, se } of exportsData[0]) {
       const exp = entryContent.slice(ss, se)
+      // 存在复合写法
       if (/export\s+\*\s+from/.test(exp)) {
         exportsData.hasReExports = true
       }
@@ -283,20 +312,34 @@ export async function optimizeDeps(
 
   const start = performance.now()
 
+  // 执行预编译
   const result = await build({
+    // 绝对路径的工作目录（项目根目录）
     absWorkingDir: process.cwd(),
+    // 入口点
     entryPoints: Object.keys(flatIdDeps),
+    // 集合，将全部文件构建后内联到入口文件
     bundle: true,
+    // 输出文件格式，支持 iife、cjs、esm
     format: 'esm',
+    // 打包后的支持的环境目标
     target: config.build.target || undefined,
+    // 排除某些依赖的打包
     external: config.optimizeDeps?.exclude,
+    // 日志级别，只显示错误信息
     logLevel: 'error',
+    // 代码拆分
     splitting: true,
     sourcemap: true,
+    // 构建输出目录，默认是 node_modules/.vite
     outdir: cacheDir,
+    // 忽略副作用注释
     ignoreAnnotations: true,
+    // 输出构建文件
     metafile: true,
+    // 全局声明
     define,
+    // 插件
     plugins: [
       ...plugins,
       esbuildDepPlugin(flatIdDeps, flatIdToExports, config, ssr)
@@ -309,6 +352,7 @@ export async function optimizeDeps(
   // the paths in `meta.outputs` are relative to `process.cwd()`
   const cacheDirOutputPath = path.relative(process.cwd(), cacheDir)
 
+  // 更新 optimized 信息
   for (const id in deps) {
     const entry = deps[id]
     data.optimized[id] = {
@@ -323,6 +367,7 @@ export async function optimizeDeps(
     }
   }
 
+  // 预编译结果写入metadata文件
   writeFile(dataPath, JSON.stringify(data, null, 2))
 
   debug(`deps bundled in ${(performance.now() - start).toFixed(2)}ms`)
@@ -379,6 +424,14 @@ function isSingleDefaultExport(exports: readonly string[]) {
 
 const lockfileFormats = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']
 
+
+/**
+ * 获取依赖的 hash 值
+ *
+ * @param {string} root 根目录
+ * @param {ResolvedConfig} config 服务配置信息
+ * @return {*}  {string}
+ */
 function getDepHash(root: string, config: ResolvedConfig): string {
   let content = lookupFile(root, lockfileFormats) || ''
   // also take config into account

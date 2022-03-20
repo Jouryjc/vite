@@ -1,0 +1,7 @@
+lockfileVersion: 5.3
+
+specifiers:
+  vite: ^2.8.4
+
+dependencies:
+  vite: link:../../../../../../../../../usr/local/pnpm-global/5/node_modules/vite

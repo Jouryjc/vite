@@ -40,10 +40,10 @@ export function esbuildDepPlugin(
   config: ResolvedConfig,
   ssr?: boolean
 ): Plugin {
-  // default resolver which prefers ESM
+  // 默认 esm 默认解析器
   const _resolve = config.createResolver({ asSrc: false })
 
-  // cjs resolver that prefers Node
+  // node 的 cjs 解析器
   const _resolveRequire = config.createResolver({
     asSrc: false,
     isRequire: true
@@ -64,6 +64,9 @@ export function esbuildDepPlugin(
       // map importer ids to file paths for correct resolution
       _importer = importer in qualified ? qualified[importer] : importer
     }
+    // kind 是 esbuild resolve 回调中的一个参数，表示模块类型，总共有 7 种类型
+    // https://esbuild.github.io/plugins/#on-resolve-arguments
+    // 以require开头的表示cjs、否则用esm的解析器
     const resolver = kind.startsWith('require') ? _resolveRequire : _resolve
     return resolver(id, _importer, undefined, ssr)
   }
@@ -71,7 +74,8 @@ export function esbuildDepPlugin(
   return {
     name: 'vite:dep-pre-bundle',
     setup(build) {
-      // externalize assets and commonly known non-js file types
+      console.log('dep-pre-bundle -------->, ', build.initialOptions)
+      // 将全部非js的资源 external（排除，外部化）
       build.onResolve(
         {
           filter: new RegExp(`\\.(` + externalTypes.join('|') + `)(\\?.*)?$`)
@@ -87,6 +91,12 @@ export function esbuildDepPlugin(
         }
       )
 
+      /**
+       * 解析入口
+       *
+       * @param {string} id
+       * @return {*} 
+       */
       function resolveEntry(id: string) {
         const flatId = flattenId(id)
         if (flatId in qualified) {
@@ -100,6 +110,7 @@ export function esbuildDepPlugin(
       build.onResolve(
         { filter: /^[\w@][^:]/ },
         async ({ path: id, importer, kind }) => {
+          // 排除 config.optimizeDeps?.exclude，同样通过 external 排除
           if (moduleListContains(config.optimizeDeps?.exclude, id)) {
             return {
               path: id,
@@ -151,9 +162,12 @@ export function esbuildDepPlugin(
       // module!
       const root = path.resolve(config.root)
       build.onLoad({ filter: /.*/, namespace: 'dep' }, ({ path: id }) => {
+        console.log('dep load --------->', id)
         const entryFile = qualified[id]
 
+        // 相对根目录的路径
         let relativePath = normalizePath(path.relative(root, entryFile))
+        // 自动加上路径前缀
         if (
           !relativePath.startsWith('./') &&
           !relativePath.startsWith('../') &&
@@ -163,6 +177,7 @@ export function esbuildDepPlugin(
         }
 
         let contents = ''
+        // 获取文件的 import、export 信息
         const data = exportsData[id]
         const [imports, exports] = data
         if (!imports.length && !exports.length) {
