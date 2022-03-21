@@ -112,12 +112,14 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
       // 美化url，输出日志
       const prettyImporter = prettifyUrl(importer, root)
 
+      // 当前模块可以略过
       if (canSkip(importer)) {
         isDebug && debug(colors.dim(`[skipped] ${prettyImporter}`))
         return null
       }
 
       const start = performance.now()
+      // 启动 JS 模块解析器
       await init
       let imports: readonly ImportSpecifier[] = []
       // strip UTF-8 BOM
@@ -147,6 +149,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
         )
       }
 
+      // 没有引入内容直接返回
       if (!imports.length) {
         isDebug &&
           debug(
@@ -160,19 +163,25 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {
       let hasEnv = false
       let needQueryInjectHelper = false
       let s: MagicString | undefined
+      // 字符串替换实例
       const str = () => s || (s = new MagicString(source))
       // vite-only server context
       const { moduleGraph } = server
       // since we are already in the transform phase of the importer, it must
       // have been loaded so its entry is guaranteed in the module graph.
+      // 获取当前模块的信息
       const importerModule = moduleGraph.getModuleById(importer)!
+      // 导入的 urls
       const importedUrls = new Set<string>()
+      // 静态导入的 url
       const staticImportedUrls = new Set<string>()
+      //
       const acceptedUrls = new Set<{
         url: string
         start: number
         end: number
       }>()
+      // 转成绝对路径
       const toAbsoluteUrl = (url: string) =>
         path.posix.resolve(path.posix.dirname(importerModule.url), url)
 
