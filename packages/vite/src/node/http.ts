@@ -120,14 +120,24 @@ export async function resolveHttpServer(
   }
 }
 
+/**
+ * 解析 https 配置
+ *
+ * @export
+ * @param {(boolean | HttpsServerOptions | undefined)} https
+ * @param {string} cacheDir
+ * @return {*}  {(Promise<HttpsServerOptions | undefined>)}
+ */
 export async function resolveHttpsConfig(
   https: boolean | HttpsServerOptions | undefined,
   cacheDir: string
 ): Promise<HttpsServerOptions | undefined> {
+  // server.https 是 false 或者 undefined，不开启 https
   if (!https) return undefined
 
   const httpsOption = isObject(https) ? { ...https } : {}
 
+  // 获取 https 基本配置
   const { ca, cert, key, pfx } = httpsOption
   Object.assign(httpsOption, {
     ca: readFileIfExists(ca),

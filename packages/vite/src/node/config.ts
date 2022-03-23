@@ -728,6 +728,14 @@ function resolveBaseUrl(
   return base
 }
 
+/**
+ * 递归地合并配置
+ *
+ * @param {Record<string, any>} defaults
+ * @param {Record<string, any>} overrides
+ * @param {string} rootPath
+ * @return {*}
+ */
 function mergeConfigRecursively(
   defaults: Record<string, any>,
   overrides: Record<string, any>,
@@ -776,6 +784,15 @@ function mergeConfigRecursively(
   return merged
 }
 
+/**
+ * 合并两个的配置
+ *
+ * @export
+ * @param {Record<string, any>} defaults
+ * @param {Record<string, any>} overrides
+ * @param {boolean} [isRoot=true]
+ * @return {*}  {Record<string, any>}
+ */
 export function mergeConfig(
   defaults: Record<string, any>,
   overrides: Record<string, any>,
@@ -852,7 +869,21 @@ export function sortUserPlugins(
 
   return [prePlugins, normalPlugins, postPlugins]
 }
-// 从文件加载配置
+
+/**
+ * 从配置文件中加载配置
+ *
+ * @export
+ * @param {ConfigEnv} configEnv
+ * @param {string} [configFile]
+ * @param {string} [configRoot=process.cwd()]
+ * @param {LogLevel} [logLevel]
+ * @return {*}  {(Promise<{
+ *   path: string
+ *   config: UserConfig
+ *   dependencies: string[]
+ * } | null>)}
+ */
 export async function loadConfigFromFile(
   configEnv: ConfigEnv,
   configFile?: string,

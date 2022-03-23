@@ -30,6 +30,7 @@ export function createWebSocketServer(
   const hmr = isObject(config.server.hmr) && config.server.hmr
   const wsServer = (hmr && hmr.server) || server
 
+  // 指定了 ws 服务地址
   if (wsServer) {
     wss = new WebSocket({ noServer: true })
     wsServer.on('upgrade', (req, socket, head) => {

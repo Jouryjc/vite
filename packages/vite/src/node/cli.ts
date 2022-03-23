@@ -27,7 +27,7 @@ interface GlobalCLIOptions {
 }
 
 /**
- * removing global flags before passing as command specific sub-configs
+ * 对于特定子命令时删除全局的参数
  */
 function cleanOptions<Options extends GlobalCLIOptions>(
   options: Options
@@ -49,6 +49,7 @@ function cleanOptions<Options extends GlobalCLIOptions>(
   return ret
 }
 
+// 公共参数
 cli
   .option('-c, --config <file>', `[string] use specified config file`)
   .option('--base <path>', `[string] public base path (default: /)`)
