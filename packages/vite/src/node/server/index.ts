@@ -351,7 +351,9 @@ export async function createServer(
   let exitProcess: () => void
   // 用字面量的形式初始化 server 配置
   const server: ViteDevServer = {
+    // 配置
     config,
+    // 中间件信息
     middlewares,
     get app() {
       config.logger.warn(
@@ -359,16 +361,25 @@ export async function createServer(
       )
       return middlewares
     },
+    // http server 信息
     httpServer,
+    // 文件监控实例
     watcher,
+    // 插件容器
     pluginContainer: container,
+    // websocket server
     ws,
+    // 模块图谱
     moduleGraph,
+    // ssr 转换器
     ssrTransform,
+    // esbuild 转换器
     transformWithEsbuild,
+    // 加载并转换具体的 url 指向的文件
     transformRequest(url, options) {
       return transformRequest(url, server, options)
     },
+    // transformIndexHtml 钩子
     transformIndexHtml: null!, // to be immediately set
     ssrLoadModule(url, opts?: { fixStacktrace?: boolean }) {
       server._ssrExternals ||= resolveSSRExternal(
@@ -391,9 +402,11 @@ export async function createServer(
         rebindErrorStacktrace(e, stacktrace)
       }
     },
+    // 启动服务
     listen(port?: number, isRestart?: boolean) {
       return startServer(server, port, isRestart)
     },
+    // 关闭服务
     async close() {
       process.off('SIGTERM', exitProcess)
 
@@ -408,6 +421,7 @@ export async function createServer(
         closeHttpServer()
       ])
     },
+    // 打印url辅助函数
     printUrls() {
       if (httpServer) {
         printCommonServerUrls(httpServer, config.server, config)
@@ -415,6 +429,7 @@ export async function createServer(
         throw new Error('cannot print server URLs in middleware mode.')
       }
     },
+    // 重启服务
     async restart(forceOptimize: boolean) {
       if (!server._restartPromise) {
         server._forceOptimizeOnRestart = !!forceOptimize

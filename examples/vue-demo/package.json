@@ -1,6 +1,5 @@
 {
   "name": "vue-demo",
-  "private": true,
   "version": "0.0.0",
   "scripts": {
     "dev": "vite --force",
@@ -10,12 +9,10 @@
   "type": "module",
   "dependencies": {
     "@types/fs-extra": "^9.0.13",
+    "@vitejs/plugin-vue": "^2.2.2",
     "fs-extra": "^10.0.1",
     "lodash-es": "^4.17.21",
     "vite": "^2.8.4",
     "vue": "^3.2.25"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^2.2.0"
   }
 }
