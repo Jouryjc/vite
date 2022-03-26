@@ -91,5 +91,8 @@
       "vite": "workspace:*",
       "@vitejs/plugin-vue": "workspace:*"
     }
+  },
+  "dependencies": {
+    "vite-learning": "^2.8.4"
   }
 }
