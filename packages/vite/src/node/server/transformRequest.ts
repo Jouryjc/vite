@@ -43,14 +43,17 @@ export function transformRequest(
   server: ViteDevServer,
   options: TransformOptions = {}
 ): Promise<TransformResult | null> {
+  // 缓存key值定义，如果是ssr，就加 ssr: 前缀，如果是 html 就加 html: 前缀
   const cacheKey = (options.ssr ? 'ssr:' : options.html ? 'html:' : '') + url
   // 判断请求队列中是否存在当前的请求
   let request = server._pendingRequests.get(cacheKey)
   // 如果不存在
   if (!request) {
-    // 做转换
+    // 重点：获取url对应的模块并解析、转换
     request = doTransform(url, server, options)
+    // 将url对应的请求加到
     server._pendingRequests.set(cacheKey, request)
+    // 请求完成后将对应的请求从_pendingRequests删除
     const done = () => server._pendingRequests.delete(cacheKey)
     request.then(done, done)
   }
@@ -205,6 +208,7 @@ async function doTransform(
       url
     ))
   } else {
+    // 将当前转换后的 code 和 sourcemap 都存到模块的 transformResult 属性上，并根据 code 生成 etag
     return (mod.transformResult = {
       code,
       map,

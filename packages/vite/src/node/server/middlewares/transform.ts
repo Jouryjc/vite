@@ -110,7 +110,7 @@ export function transformMiddleware(
       return next(e)
     }
 
-    // 清楚url中的hash值和query参数
+    // 清除url中的hash值和query参数
     const withoutQuery = cleanUrl(url)
 
     try {
