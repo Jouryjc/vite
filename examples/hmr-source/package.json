@@ -1,5 +1,5 @@
 {
-  "name": "hmr-app",
+  "name": "hmr-source",
   "private": true,
   "version": "0.0.0",
   "scripts": {
@@ -8,6 +8,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vite": "^2.8.4"
+    "lodash-es": "^4.17.21",
+    "vue": "^3.2.25"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^2.3.1",
+    "vite": "^2.9.5"
   }
 }

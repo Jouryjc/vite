@@ -80,13 +80,38 @@ importers:
       vite: link:packages/vite
       vitepress: 0.21.6
 
-  examples:
+  examples/hmr-app:
     specifiers:
       vite: workspace:*
-    dependencies:
-      vite: link:../packages/vite
+    devDependencies:
+      vite: link:../../packages/vite
 
-  examples/hmr-app:
+  examples/hmr-source:
+    specifiers:
+      '@vitejs/plugin-vue': workspace:*
+      lodash-es: ^4.17.21
+      vite: workspace:*
+      vue: ^3.2.25
+    dependencies:
+      lodash-es: 4.17.21
+      vue: 3.2.30
+    devDependencies:
+      '@vitejs/plugin-vue': link:../../packages/plugin-vue
+      vite: link:../../packages/vite
+
+  examples/module-graph:
+    specifiers:
+      vite: workspace:*
+    devDependencies:
+      vite: link:../../packages/vite
+
+  examples/plugin-container:
+    specifiers:
+      vite: workspace:*
+    devDependencies:
+      vite: link:../../packages/vite
+
+  examples/resolve-config:
     specifiers:
       vite: workspace:*
     devDependencies:
@@ -860,7 +885,7 @@ importers:
       '@rollup/plugin-dynamic-import-vars': 1.4.2_rollup@2.62.0
       '@rollup/plugin-json': 4.1.0_rollup@2.62.0
       '@rollup/plugin-node-resolve': 13.1.3_rollup@2.62.0
-      '@rollup/plugin-typescript': 8.3.0_rollup@2.62.0+tslib@2.3.1
+      '@rollup/plugin-typescript': 8.3.0_7c5ff569c0887b4f0035eb7cb6988163
       '@rollup/pluginutils': 4.1.2
       '@types/convert-source-map': 1.5.2
       '@types/cross-spawn': 6.0.2
@@ -904,7 +929,7 @@ importers:
       periscopic: 2.0.3
       picocolors: 1.0.0
       postcss-import: 14.0.2_postcss@8.4.6
-      postcss-load-config: 3.1.1
+      postcss-load-config: 3.1.1_ts-node@10.4.0
       postcss-modules: 4.3.0_postcss@8.4.6
       resolve.exports: 1.1.0
       rollup-plugin-license: 2.6.1_rollup@2.62.0
@@ -913,7 +938,7 @@ importers:
       source-map-support: 0.5.21
       strip-ansi: 6.0.1
       terser: 5.10.0_acorn@8.7.0
-      tsconfck: 1.1.2
+      tsconfck: 1.1.2_typescript@4.5.4
       tslib: 2.3.1
       types: link:types
       ws: 8.5.0
@@ -2204,7 +2229,7 @@ packages:
       rollup: 2.62.0
     dev: true
 
-  /@rollup/plugin-typescript/8.3.0_rollup@2.62.0+tslib@2.3.1:
+  /@rollup/plugin-typescript/8.3.0_7c5ff569c0887b4f0035eb7cb6988163:
     resolution: {integrity: sha512-I5FpSvLbtAdwJ+naznv+B4sjXZUcIvLLceYpITAn7wAP8W0wqc5noLdGIp9HGVntNhRWXctwPYrSSFQxtl0FPA==}
     engines: {node: '>=8.0.0'}
     peerDependencies:
@@ -2216,6 +2241,7 @@ packages:
       resolve: 1.22.0
       rollup: 2.62.0
       tslib: 2.3.1
+      typescript: 4.5.4
     dev: true
 
   /@rollup/pluginutils/3.1.0_rollup@2.62.0:
@@ -2752,7 +2778,7 @@ packages:
       '@vue/shared': 3.2.30
       estree-walker: 2.0.2
       magic-string: 0.25.7
-      postcss: 8.4.5
+      postcss: 8.4.6
       source-map: 0.6.1
 
   /@vue/compiler-ssr/3.2.26:
@@ -4937,19 +4963,6 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
-    dev: false
-
-  /follow-redirects/1.14.6_debug@4.3.3:
-    resolution: {integrity: sha512-fhUl5EwSJbbl8AR+uYL2KQDxLkdSjZGR36xy46AO7cOMTrCMON6Sa28FmAnC2tRTDbd/Uuzz3aJBv7EBN7JH8A==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-    dependencies:
-      debug: 4.3.3
-    dev: true
 
   /form-data/3.0.1:
     resolution: {integrity: sha512-RHkBKtLWUVwd7SqRIvCZMEvAMoGUp0XU+seQiZejj0COz3RI3hWP4sCv3gZWWLjJTd7rGwcsF5eKZGii0r/hbg==}
@@ -5348,7 +5361,7 @@ packages:
     engines: {node: '>=8.0.0'}
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.14.6_debug@4.3.3
+      follow-redirects: 1.14.6
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -6871,7 +6884,6 @@ packages:
     resolution: {integrity: sha512-fmsZYa9lpn69Ad5eDn7FMcnnSR+8R34W9qJEijxYhTbfOWzr22n1QxCMzXLK+ODyW2973V3Fux959iQoUxzUIA==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
-    dev: false
 
   /natural-compare/1.4.0:
     resolution: {integrity: sha1-Sr6/7tdUHywnrPspvbvRXI1bpPc=}
@@ -7395,7 +7407,7 @@ packages:
       yaml: 1.10.2
     dev: false
 
-  /postcss-load-config/3.1.1:
+  /postcss-load-config/3.1.1_ts-node@10.4.0:
     resolution: {integrity: sha512-c/9XYboIbSEUZpiD1UQD0IKiUe8n9WHYV7YFe7X7J+ZwCsEKkUJSFWjS9hBU1RR9THR7jMXst8sxiqP0jjo2mg==}
     engines: {node: '>= 10'}
     peerDependencies:
@@ -7405,6 +7417,7 @@ packages:
         optional: true
     dependencies:
       lilconfig: 2.0.4
+      ts-node: 10.4.0_afa64049ed426af4e84a055f796a9f2e
       yaml: 1.10.2
     dev: true
 
@@ -7502,7 +7515,6 @@ packages:
       nanoid: 3.2.0
       picocolors: 1.0.0
       source-map-js: 1.0.2
-    dev: false
 
   /preact/10.6.4:
     resolution: {integrity: sha512-WyosM7pxGcndU8hY0OQlLd54tOU+qmG45QXj2dAYrL11HoyU/EzOSTlpJsirbBr1QW7lICxSsVJJmcmUglovHQ==}
@@ -8960,7 +8972,7 @@ packages:
       yn: 3.1.1
     dev: true
 
-  /tsconfck/1.1.2:
+  /tsconfck/1.1.2_typescript@4.5.4:
     resolution: {integrity: sha512-n6SkiUQ784Uu2pviyd0j2kspm/fipdjO5jZuR8zUHVVoQeRnR6BSV5zlbheDmpyP0lj7GvHWvFcaxxhUFrzQWQ==}
     engines: {node: ^12.20 || ^14.13.1 || >= 16}
     hasBin: true
@@ -8969,6 +8981,8 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+    dependencies:
+      typescript: 4.5.4
     dev: true
 
   /tslib/1.14.1:
